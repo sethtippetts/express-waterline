@@ -14,6 +14,8 @@ var _glob = require('glob');
 
 var _glob2 = _interopRequireDefault(_glob);
 
+var _reduce = require('async');
+
 var _path = require('path');
 
 var _path2 = _interopRequireDefault(_path);
@@ -30,7 +32,11 @@ var _pascal = require('change-case');
 
 var METHODS = ['beforeAccess', 'afterAccess', 'beforeSave', 'afterSave', 'beforeUpdate', 'afterUpdate', 'beforeCreate', 'afterCreate', 'beforeDelete', 'afterDelete'];
 
-exports['default'] = function (models, config) {
+var passThrough = function passThrough(data) {
+  return _Promise2['default'].resolve(data);
+};
+
+exports['default'] = function (config) {
   // Instantiate a new instance of the ORM
   var orm = new _Waterline2['default']();
 
@@ -40,41 +46,40 @@ exports['default'] = function (models, config) {
   }, {});
 
   Object.keys(schema).map(getModel).map(function (model) {
-    console.log('loading model', model.identity);
     model.lifecycle = getLifecycle(model);
 
     model = _merge.merge({}, config.defaults, model);
 
     if (!model.tableName) model.tableName = _pascal.pascalCase(model.identity);
     return model;
-  })
-  // .filter(model => model.public)
-  .map(function (model) {
+  }).filter(function (model) {
+    return model['public'] !== false;
+  }).map(function (model) {
     return _Waterline2['default'].Collection.extend(model);
   }).map(orm.loadCollection.bind(orm));
 
   return _Promise2['default'].promisify(orm.initialize.bind(orm))(config).then(function (models) {
     return models.collections;
-  }).then(function (modelList) {
-    console.log(Object.keys(modelList || {}));
-    Object.assign(models, modelList);
-    return modelList;
   });
 
   function getModel(name) {
     var obj = schema[name];
     if (!obj) throw new Error('Schmemata for model ' + name + ' not found');
 
-    if (obj.base) obj = _merge.merge({}, getModel(obj.base), obj);
+    if (obj.base) obj = _merge.merge({}, getModel(obj.base), obj, function (a, b, key) {
+      if (~METHODS.indexOf(key) && a && b) {
+        if (!Array.isArray(a)) a = [a];
+        if (!Array.isArray(b)) b = [b];
+        return a.concat(b);
+      }
+    });
 
     return obj;
   }
 
   function getLifecycle(model) {
     return METHODS.reduce(function (prev, method) {
-      var fn = _get$set$coalesce.coalesce(model, [method, ['lifecycle', method]], function (data) {
-        return _Promise2['default'].resolve(data);
-      });
+      var fn = _get$set$coalesce.coalesce(model, [method, ['lifecycle', method]], passThrough);
       _get$set$coalesce.set(prev, method, execLifecycle.bind(model, fn));
 
       // Just in case, delete the original so waterline doesn't also call it
@@ -83,14 +88,20 @@ exports['default'] = function (models, config) {
     }, {});
   }
 
-  function execLifecycle(lifecycle, instance, site, user, next) {
+  function execLifecycle(lifecycle, instance, req, next) {
+    if (!instance) instance = {};
     if (!lifecycle) lifecycle = function () {
       return _Promise2['default'].resolve(instance);
     };
-    if (!Array.isArray(lifecycle)) lifecycle = [lifecycle];
-    return _Promise2['default'].all(lifecycle.map(function (mw) {
-      return mw(instance, user, site);
-    })).nodeify(next);
+    if (!Array.isArray(lifecycle)) {
+      return _Promise2['default'].resolve(lifecycle(instance, req) || instance).nodeify(next);
+    }
+
+    return _Promise2['default'].fromNode(function (cb) {
+      _reduce.reduce(lifecycle, instance, function (i, mw, cb) {
+        _Promise2['default'].resolve(mw(i, req) || instance).nodeify(cb);
+      }, cb);
+    }).nodeify(next);
   }
 };
 

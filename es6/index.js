@@ -1,23 +1,27 @@
 'use strict';
 
 import path from 'path';
-import getModels from './models';
-import router from './resource-router';
 import assert from 'assert';
 import Promise from 'bluebird';
+import getModels from './models';
+import router from './resource-router';
 
 var initialized;
 var configured;
-var middleware = (req, res, next) => res.sendStatus(502);
+var middleware = (req, res, next) => {
+  res
+    .status(502)
+    .send({ code: 502, message: 'Server starting. Please wait.' });
+};
+
 var initPromise = Promise.fromNode((cb) => { initialized = cb; });
 
-export default function(name) {
-  return initPromise.then(function (collections) {
-    if (!name) { return collections; }
+export default (name) => initPromise
+  .then((collections) => {
+    if (!name) return collections;
     assert(collections[name], 'No collection with name "' + name + '" exists');
     return collections[name];
   });
-}
 
 export function init(config) {
   assert(
@@ -27,20 +31,18 @@ export function init(config) {
 
   configured = true;
 
+  // Defaults
   config = Object.assign({
     dir: path.join(process.cwd(), 'models'),
     defaults: {},
     adapters: {},
-    connections: {}
-    // Defaults
+    connections: {},
   }, config);
 
-  let models = {};
-
-  getModels(models, config)
+  // Passing
+  getModels(config)
     .then(models => {
       middleware = router(models, config);
-      console.log('models', Object.keys(models));
       return models;
     })
     .nodeify(initialized);

@@ -30,14 +30,16 @@ exports['default'] = function (model) {
   if (populate) include = populate;
   if (fields) select = fields;
 
+  if (typeof include === 'object') include = Object.keys(include).join(' ');
   if (typeof select === 'string') select = [select];
 
   var params = undefined;
-
   var method = 'find';
+  var isCount = where && where.id === 'count';
+
   if (select) params = { select: select };
   if (where && where.id) {
-    if (where.id === 'count') {
+    if (isCount) {
       method = 'count';
     } else {
       method += 'One';
@@ -47,14 +49,12 @@ exports['default'] = function (model) {
     delete where.id;
   }
 
-  console.log('QUERY BUILDER', model.identity, method, params, where);
-
   var query = model[method](params);
 
   if (where) query.where(cleanup(where, model));
-  if (where && where.id !== 'count') {
+  if (isCount) {
     if (order) query.sort(order);
-    if (include) query.populate(typeof include === 'object' ? Object.keys(include).join(' ') : include);
+    if (include) query.populate(include);
     if (offset) query.skip(offset);
     if (limit) query.limit(limit);
   }

@@ -1,0 +1,11 @@
+{
+  "unused": true,
+  "eqnull": true,
+  "node": true,
+  "esnext": true,
+  "mocha": true,
+  "laxbreak": true,
+  "globals": {
+    "Promise": true
+  }
+}

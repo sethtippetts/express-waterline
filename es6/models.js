@@ -1,5 +1,6 @@
 import Waterline from 'waterline';
 import glob from 'glob';
+import { reduce } from 'async';
 import path from 'path';
 import Promise from 'bluebird';
 import { merge } from 'lodash';
@@ -19,7 +20,9 @@ const METHODS = [
   'afterDelete'
 ];
 
-export default function(models, config) {
+let passThrough = (data) => Promise.resolve(data);
+
+export default function(config) {
   // Instantiate a new instance of the ORM
   var orm = new Waterline();
 
@@ -34,7 +37,6 @@ export default function(models, config) {
   Object.keys(schema)
     .map(getModel)
     .map(model => {
-      console.log('loading model', model.identity);
       model.lifecycle = getLifecycle(model);
 
       model = merge({}, config.defaults, model);
@@ -42,23 +44,24 @@ export default function(models, config) {
       if (!model.tableName) model.tableName = pascal(model.identity);
       return model;
     })
-    // .filter(model => model.public)
+    .filter(model => model.public !== false)
     .map(model => Waterline.Collection.extend(model))
     .map(orm.loadCollection.bind(orm));
 
   return Promise.promisify(orm.initialize.bind(orm))(config)
-    .then(models => models.collections)
-    .then(modelList => {
-      console.log(Object.keys(modelList || {}));
-      Object.assign(models, modelList);
-      return modelList;
-    });
+    .then(models => models.collections);
 
   function getModel(name) {
     var obj = schema[name];
     if (!obj) throw new Error(`Schmemata for model ${name} not found`);
 
-    if (obj.base) obj = merge({}, getModel(obj.base), obj);
+    if (obj.base) obj = merge({}, getModel(obj.base), obj, (a, b, key) => {
+      if (~METHODS.indexOf(key) && a && b) {
+        if (!Array.isArray(a)) a = [a];
+        if (!Array.isArray(b)) b = [b];
+        return a.concat(b);
+      }
+    });
 
     return obj;
   }
@@ -66,7 +69,7 @@ export default function(models, config) {
   function getLifecycle(model) {
     return METHODS
       .reduce((prev, method) => {
-        let fn = coalesce(model, [method, ['lifecycle', method]], (data) => Promise.resolve(data));
+        let fn = coalesce(model, [method, ['lifecycle', method]], passThrough);
         set(prev, method, execLifecycle.bind(model, fn));
 
         // Just in case, delete the original so waterline doesn't also call it
@@ -75,12 +78,19 @@ export default function(models, config) {
       }, {});
   }
 
-  function execLifecycle(lifecycle, instance, site, user, next) {
+  function execLifecycle(lifecycle, instance, req, next) {
+    if (!instance) instance = {};
     if (!lifecycle) lifecycle = () => Promise.resolve(instance);
-    if (!Array.isArray(lifecycle)) lifecycle = [lifecycle];
-    return Promise.all(
-      lifecycle.map(mw => mw(instance, user, site))
-    ).nodeify(next);
+    if (!Array.isArray(lifecycle)) {
+      return Promise.resolve(lifecycle(instance, req) || instance)
+        .nodeify(next);
+    }
+
+    return Promise.fromNode(cb => {
+      reduce(lifecycle, instance, function(i, mw, cb) {
+        Promise.resolve(mw(i, req) || instance).nodeify(cb);
+      }, cb);
+    }).nodeify(next);
   }
 }
 

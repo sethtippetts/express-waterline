@@ -3,21 +3,34 @@
 import bool from 'boolean';
 
 
-export default (model, {where, limit, include, populate, fields, select, order, sort, offset} = {}) => {
+export default (model, {
+  where,
+  limit,
+  include,
+  populate,
+  fields,
+  select,
+  order,
+  sort,
+  offset
+} = {}) => {
 
   // Aliases
   if (sort) order = sort;
   if (populate) include = populate;
   if (fields) select = fields;
 
+  if (typeof include === 'object') include = Object.keys(include).join(' ');
   if (typeof select === 'string') select = [select];
 
-  let params;
 
+  let params;
   let method = 'find';
+  let isCount = where && where.id === 'count';
+
   if (select) params = { select };
   if (where && where.id) {
-    if (where.id === 'count') {
+    if (isCount) {
       method = 'count';
     } else {
       method += 'One';
@@ -27,14 +40,12 @@ export default (model, {where, limit, include, populate, fields, select, order, 
     delete where.id;
   }
 
-  console.log('QUERY BUILDER', model.identity, method, params, where);
-
   let query = model[method](params);
 
   if (where) query.where(cleanup(where, model));
-  if (where && where.id !== 'count') {
+  if (isCount) {
     if (order) query.sort(order);
-    if (include) query.populate(typeof include === 'object' ? Object.keys(include).join(' ') : include);
+    if (include) query.populate(include);
     if (offset) query.skip(offset);
     if (limit) query.limit(limit);
   }
