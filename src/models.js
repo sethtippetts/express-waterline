@@ -44,7 +44,7 @@ export default function(config) {
       if (!model.tableName) model.tableName = pascal(model.identity);
       return model;
     })
-    .filter(model => model.public !== false)
+    .filter(model => model.public !== false && !!model.connection)
     .map(model => Waterline.Collection.extend(model))
     .map(orm.loadCollection.bind(orm));
 
