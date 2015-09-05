@@ -5,12 +5,13 @@ import { set } from 'object-path';
 import Promise from 'bluebird';
 import Inflect from 'i';
 
+import getModels from './';
 import queryBuilder from './query-builder';
 
 let inflect = new Inflect();
 let singularize = inflect.singularize.bind(inflect);
 
-export default function(models, config) {
+export default function(config) {
 
   let router = express.Router();
 
@@ -30,8 +31,10 @@ export default function(models, config) {
 
   /** Inject model **/
   function getResource(req, res, next) {
-    req.model = models[singularize(req.params.resource)];
-    next();
+    getModels(singularize(req.params.resource))
+      .then(model => { req.model = model; })
+      .then(next)
+      .catch(next);
   }
 }
 

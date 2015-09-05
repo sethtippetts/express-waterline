@@ -8,12 +8,6 @@ import router from './resource-router';
 
 var initialized;
 var configured;
-var middleware = (req, res, next) => {
-  res
-    .status(502)
-    .send({ code: 502, message: 'Server starting. Please wait.' });
-};
-
 var initPromise = Promise.fromNode((cb) => { initialized = cb; });
 
 export default (name) => initPromise
@@ -40,12 +34,7 @@ export function init(config) {
   }, config);
 
   // Passing
-  getModels(config)
-    .then(models => {
-      middleware = router(models, config);
-      return models;
-    })
-    .nodeify(initialized);
+  getModels(config).nodeify(initialized);
 
-  return (req, res, next) => middleware(req, res, next);
+  return router(config);
 }
