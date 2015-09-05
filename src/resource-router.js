@@ -84,7 +84,8 @@ function update(req, res, next) {
   Promise.resolve(body)
     .then(body => model.lifecycle.beforeSave(body, req))
     .then(body => model.lifecycle.beforeUpdate(body, req))
-    .then(body => model.update({ id: params.id }))
+    .then(body => model.update({ id: params.id }, body))
+    .then(isSingle)
     .then(body => model.lifecycle.afterSave(body, req))
     .then(body => model.lifecycle.afterUpdate(body, req))
     .then(res.send.bind(res))
@@ -101,6 +102,11 @@ function destroy(req, res, next) {
     .then(body => model.lifecycle.afterDelete(body, req))
     .then(res.send.bind(res))
     .catch(next);
+}
+
+function isSingle(results) {
+  if (Array.isArray(results) && results.length === 1) return results[0];
+  return results;
 }
 
 
