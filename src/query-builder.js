@@ -26,7 +26,7 @@ export default (model, {
 
   let params;
   let method = 'find';
-  let isCount = where && where.id === 'count';
+  let isCount = !!where && where.id === 'count';
 
   if (select) params = { select };
   if (where && where.id) {
@@ -43,14 +43,17 @@ export default (model, {
   let query = model[method](params);
 
   if (where) query.where(cleanup(where, model));
-  if (isCount) {
+  if (!isCount) {
     if (order) query.sort(order);
     if (include) query.populate(include);
     if (offset) query.skip(offset);
     if (limit) query.limit(limit);
   }
 
-  return query.then(data => data);
+  return query.then(data => {
+    if (isCount) data = { count: data };
+    return data;
+  });
 };
 
 function cleanup(where, model) {

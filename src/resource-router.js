@@ -20,9 +20,6 @@ export default function(models, config) {
     .get(list)
     .post(create);
 
-  router.route('/:resource/count')
-    .get(count);
-
   router.route('/:resource/:id')
     .get(get)
     .put(update)
@@ -62,16 +59,6 @@ function create(req, res, next) {
     .then(body => model.create(body))
     .then(body => model.lifecycle.afterSave(body, req))
     .then(body => model.lifecycle.afterCreate(body, req))
-    .then(res.send.bind(res))
-    .catch(next);
-}
-
-/** Return resource count **/
-function count(req, res, next) {
-  let { model, body } = req;
-
-  Promise.resolve(body)
-    .then(body => queryBuilder(model, body))
     .then(res.send.bind(res))
     .catch(next);
 }
