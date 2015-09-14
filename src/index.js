@@ -38,3 +38,5 @@ export function init(config) {
 
   return router(config);
 }
+
+export * from './methods';

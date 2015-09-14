@@ -1,12 +1,10 @@
 'use strict';
 
 import express from 'express';
-import { set } from 'object-path';
-import Promise from 'bluebird';
 import Inflect from 'i';
 
 import getModels from './';
-import queryBuilder from './query-builder';
+import * as methods from './methods';
 
 let inflect = new Inflect();
 let singularize = inflect.singularize.bind(inflect);
@@ -41,76 +39,40 @@ export default function(config) {
 /*** ---CRUD Methods--- ***/
 
 /** Query resource list **/
-function list(req, res, next) {
-  let { model, query } = req;
-
-  Promise.resolve(query.filter)
-    .then(body => model.lifecycle.beforeAccess(body, req))
-    .then(body => queryBuilder(model, body))
-    .then(body => model.lifecycle.afterAccess(body, req))
+export function list(req, res, next) {
+  methods.list(req.model, req)
     .then(res.send.bind(res))
     .catch(next);
 }
 
 /** Create new resource **/
-function create(req, res, next) {
-  let { model, body } = req;
-
-  Promise.resolve(body)
-    .then(body => model.lifecycle.beforeSave(body, req))
-    .then(body => model.lifecycle.beforeCreate(body, req))
-    .then(body => model.create(body))
-    .then(body => model.lifecycle.afterSave(body, req))
-    .then(body => model.lifecycle.afterCreate(body, req))
+export function create(req, res, next) {
+  methods.create(req.model, req)
     .then(res.send.bind(res))
     .catch(next);
 }
 
 /** Return a single resource by ID **/
-function get(req, res, next) {
-  let { model, query, params } = req;
-
-  set(query, 'filter.where.id', params.id);
-
-  Promise.resolve(query.filter)
-    .then(body => model.lifecycle.beforeAccess(body, req))
-    .then(body => queryBuilder(model, body))
-    .then(body => model.lifecycle.afterAccess(body, req))
+export function get(req, res, next) {
+  methods.get(req.model, req)
     .then(res.send.bind(res))
     .catch(next);
 }
 
 /** Update a single resource by ID **/
-function update(req, res, next) {
-  let { model, body, params } = req;
-
-  Promise.resolve(body)
-    .then(body => model.lifecycle.beforeSave(body, req))
-    .then(body => model.lifecycle.beforeUpdate(body, req))
-    .then(body => model.update({ id: params.id }, body))
-    .then(isSingle)
-    .then(body => model.lifecycle.afterSave(body, req))
-    .then(body => model.lifecycle.afterUpdate(body, req))
+export function update(req, res, next) {
+  methods.update(req.model, req)
     .then(res.send.bind(res))
     .catch(next);
 }
 
 /** Destroy a single resource by ID **/
-function destroy(req, res, next) {
-  let { model, query, params } = req;
-
-  Promise.resolve(query.filter)
-    .then(body => model.lifecycle.beforeDelete(body, req))
-    .then(body => model.destroy({ id: params.id }))
-    .then(body => model.lifecycle.afterDelete(body, req))
+export function destroy(req, res, next) {
+  methods.destroy(req.model, req)
     .then(res.send.bind(res))
     .catch(next);
 }
 
-function isSingle(results) {
-  if (Array.isArray(results) && results.length === 1) return results[0];
-  return results;
-}
 
 
 
