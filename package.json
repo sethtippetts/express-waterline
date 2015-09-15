@@ -1,6 +1,6 @@
 {
   "name": "express-waterline",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Automagic API with Waterline models and express",
   "main": "lib/index.js",
   "scripts": {
