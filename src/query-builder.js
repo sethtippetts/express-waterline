@@ -67,6 +67,7 @@ function cleanup(where, model) {
 }
 
 function coerce(val, type) {
+  if (val === null) return val;
   if (Array.isArray(val)) return val.map((v) => coerce(v, type));
   if (typeof val === 'object') return Object.keys(val).reduce((prev, curr) => {
     prev[curr] = coerce(val[curr], type);
