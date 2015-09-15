@@ -48,7 +48,7 @@ export function list(req, res, next) {
 /** Create new resource **/
 export function create(req, res, next) {
   methods.create(req.model, req)
-    .then(res.send.bind(res))
+    .then(body => res.status(201).send(body))
     .catch(next);
 }
 
@@ -69,7 +69,7 @@ export function update(req, res, next) {
 /** Destroy a single resource by ID **/
 export function destroy(req, res, next) {
   methods.destroy(req.model, req)
-    .then(res.send.bind(res))
+    .then(() => res.sendStatus(204))
     .catch(next);
 }
 
