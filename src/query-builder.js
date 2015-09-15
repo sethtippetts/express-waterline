@@ -59,9 +59,9 @@ export default (model, {
 function cleanup(where, model) {
   return Object.keys(where)
     .reduce((obj, prop) => {
-
       // TODO: Probably bad practice to reference underscored properties...
-      obj[prop] = coerce(where[prop], model._cast._types[prop] || 'string');
+      let castType = model._cast._types[prop];
+      obj[prop] = castType ? coerce(where[prop], castType) : where[prop];
       return obj;
     }, {});
 }

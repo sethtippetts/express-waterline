@@ -4,20 +4,29 @@ import { reduce } from 'async';
 import path from 'path';
 import Promise from 'bluebird';
 import { merge } from 'lodash';
-import { get, set, coalesce } from 'object-path';
+import { get, set } from 'object-path';
 import { pascalCase as pascal } from 'change-case';
 
 const METHODS = [
+  // GET
   'beforeAccess',
   'afterAccess',
+
+  // PUT, POST
   'beforeSave',
   'afterSave',
+
+  // PUT
   'beforeUpdate',
   'afterUpdate',
+
+  // POST
   'beforeCreate',
   'afterCreate',
+
+  // DELETE
   'beforeDelete',
-  'afterDelete'
+  'afterDelete',
 ];
 
 let passThrough = (data) => Promise.resolve(data);
@@ -69,28 +78,27 @@ export default function(config) {
   function getLifecycle(model) {
     return METHODS
       .reduce((prev, method) => {
-        let fn = coalesce(model, [method, ['lifecycle', method]], passThrough);
+        let fn = get(model, ['lifecycle', method], passThrough);
         set(prev, method, execLifecycle.bind(model, fn));
-
-        // Just in case, delete the original so waterline doesn't also call it
-        delete model[method];
         return prev;
       }, {});
   }
 
-  function execLifecycle(lifecycle, instance, req, next) {
-    if (!instance) instance = {};
+  function execLifecycle(lifecycle, ...args) {
+    let [instance] = args;
+    if (!instance) instance = args[0] = {};
     if (!lifecycle) lifecycle = () => Promise.resolve(instance);
-    if (!Array.isArray(lifecycle)) {
-      return Promise.resolve(lifecycle(instance, req) || instance)
-        .nodeify(next);
-    }
+    if (!Array.isArray(lifecycle)) lifecycle = [lifecycle];
 
     return Promise.fromNode(cb => {
-      reduce(lifecycle, instance, function(i, mw, cb) {
-        Promise.resolve(mw(i, req) || instance).nodeify(cb);
+      reduce(lifecycle, instance, (i, mw, cb) => {
+        Promise.method(mw).apply(this, args)
+          .then(ins => {
+            if (typeof ins !== 'undefined') return ins;
+            return instance;
+          }).nodeify(cb);
       }, cb);
-    }).nodeify(next);
+    });
   }
 }
 
