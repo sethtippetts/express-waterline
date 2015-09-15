@@ -19,7 +19,6 @@
   },
   "homepage": "https://github.com/SethTippetts/express-waterline#readme",
   "dependencies": {
-    "assert": "^1.3.0",
     "async": "^1.4.2",
     "bluebird": "^2.9.34",
     "boolean": "^0.1.0",
