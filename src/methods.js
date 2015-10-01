@@ -65,6 +65,7 @@ export function destroy(model, req, cb) {
   return Promise.resolve(query.filter)
     .then(body => model.lifecycle.beforeDelete(body, req))
     .then(() => model.destroy({ id: params.id }))
+    .then(isSingle)
     .then(body => model.lifecycle.afterDelete(body, req))
     .nodeify(cb);
 }
