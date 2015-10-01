@@ -59,7 +59,7 @@ export default (model, {
   });
 };
 
-function cleanup(where, model) {
+export function cleanup(where, model) {
   return Object.keys(where)
     .reduce((obj, prop) => {
       // TODO: Probably bad practice to reference underscored properties...
@@ -69,15 +69,15 @@ function cleanup(where, model) {
     }, {});
 }
 
-function coerce(val, type) {
-  if (val === null) return val;
+export function coerce(val, type) {
+  if (val === null || val === undefined) return val;
   if (Array.isArray(val)) return val.map((v) => coerce(v, type));
   if (typeof val === 'object') return Object.keys(val).reduce((prev, curr) => {
     prev[curr] = coerce(val[curr], type);
     return prev;
   }, {});
-  if (type === 'string') return (val || '').toString();
-  if (type === 'integer') return parseInt(val || 0);
-  if (type === 'double' || type === 'float') return parseFloat(val || 0.0);
+  if (type === 'string') return val.toString();
+  if (type === 'integer') return parseInt(val);
+  if (type === 'double' || type === 'float') return parseFloat(val);
   if (type === 'boolean') return bool(val);
 }
