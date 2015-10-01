@@ -20,7 +20,10 @@ export default (model, {
   if (populate) include = populate;
   if (fields) select = fields;
 
-  if (typeof include === 'object') include = Object.keys(include).join(' ');
+  if (include && !Array.isArray(include)) {
+    if (typeof include === 'object') include = Object.keys(include);
+    if (typeof include === 'string') include = [include];
+  }
   if (typeof select === 'string') select = [select];
 
 
@@ -45,7 +48,7 @@ export default (model, {
   if (where) query.where(cleanup(where, model));
   if (!isCount) {
     if (order) query.sort(order);
-    if (include) query.populate(include);
+    if (include) include.map(incl => query.populate(incl));
     if (offset) query.skip(offset);
     if (limit) query.limit(limit);
   }
