@@ -6,6 +6,9 @@ import Promise from 'bluebird';
 import { merge } from 'lodash';
 import { get, set } from 'object-path';
 import { pascalCase as pascal } from 'change-case';
+import debug from 'debug';
+
+let log = debug('express:waterline');
 
 const METHODS = [
   // GET
@@ -32,6 +35,8 @@ const METHODS = [
 let passThrough = (data) => Promise.resolve(data);
 
 export default function(config) {
+
+  log('Initializing models');
   // Instantiate a new instance of the ORM
   var orm = new Waterline();
 
@@ -58,7 +63,10 @@ export default function(config) {
     .map(orm.loadCollection.bind(orm));
 
   return Promise.promisify(orm.initialize.bind(orm))(config)
-    .then(models => models.collections);
+    .then(models => {
+      log('Waterline started');
+      return models.collections;
+    });
 
   function getModel(name) {
     var obj = schema[name];
