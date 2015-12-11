@@ -98,6 +98,64 @@ All you have to do is define the property `base` and the name of the model you'r
 }
 ```
 
+### Multi-tenant support
+
+One frusterating thing about Waterline is that it's a singleton. It makes it difficult to use multiple database
+connections using the same models. As a workaround, you can add an environment suffix to a clone of each model, and create
+several DB connections. Managing that can be difficult, especially with foreign keys having to match.
+
+To implement multi-tenancy in Express Waterline, simply pass an array of connection configurations, each with the added key
+`tenantId`. Express Waterline does the rest!
+
+#### Configuration
+
+```js
+import { init as waterline } from 'express-waterline';
+import salesforce from 'waterline-salesforce';
+
+waterline({
+  adapters: {
+    salesforce,
+  },
+  tenantKey: 'X-Env',
+  connections: {
+    salesforce: [{
+      tenantId: 'STG',
+      adapter: 'salesforce',
+      connectionParams: {
+        loginUrl: config.get('salesforce.stg.target'),
+        accessToken: config.get('salesforce.stg.token'),
+      },
+      username: config.get('salesforce.stg.user'),
+      password: config.get('salesforce.stg.password') + config.get('salesforce.stg.token'),
+    },
+    {
+      tenantId: 'SIT',
+      adapter: 'salesforce',
+      connectionParams: {
+        loginUrl: config.get('salesforce.sit.target'),
+        accessToken: config.get('salesforce.sit.token'),
+      },
+      username: config.get('salesforce.sit.user'),
+      password: config.get('salesforce.sit.password') + config.get('salesforce.sit.token'),
+    },
+    {
+      tenantId: 'default',
+      adapter: 'salesforce',
+      connectionParams: {
+        loginUrl: config.get('salesforce.prod.target'),
+        accessToken: config.get('salesforce.prod.token'),
+      },
+      username: config.get('salesforce.prod.user'),
+      password: config.get('salesforce.prod.password') + config.get('salesforce.prod.token'),
+    }],
+  },
+});
+```
+
+#### `tenantKey`
+Express Waterline will search for the tenantKey in the request headers and query string
+
 ### Lifecycle Callback Context
 
 Waterline models come with built in lifecycle callbacks, but they don't give much context other than the values of the instances you're modifying.

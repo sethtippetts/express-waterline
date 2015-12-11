@@ -1,5 +1,3 @@
-'use strict';
-
 import path from 'path';
 import assert from 'assert';
 import Promise from 'bluebird';
@@ -13,10 +11,11 @@ var initialized;
 var configured;
 var initPromise = Promise.fromNode((cb) => { initialized = cb; });
 
-export let getModels = (name) => initPromise
+export let getModels = (name, env) => initPromise
   .then((collections) => {
-    log('Getting models');
+    log(`Getting models for key ${name} and environment ${env || 'default'}`);
     if (!name) return collections;
+    if (env) name += `-${env.toLowerCase()}`;
     assert(collections[name], 'No collection with name "' + name + '" exists');
     return collections[name];
   });

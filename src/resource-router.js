@@ -12,6 +12,7 @@ let singularize = inflect.singularize.bind(inflect);
 export default function(config) {
 
   let router = express.Router();
+  let { tenantKey } = config;
 
   router.use('/:resource', getResource);
 
@@ -24,16 +25,27 @@ export default function(config) {
     .put(update)
     .delete(destroy);
 
+  let getEnv = getTenantId.bind(this, tenantKey);
+
   return router;
 
 
   /** Inject model **/
   function getResource(req, res, next) {
-    getModels(singularize(req.params.resource))
+    getModels(singularize(req.params.resource), getEnv(req))
       .then(model => { req.model = model; })
       .then(next)
       .catch(next);
   }
+
+}
+
+export function getTenantId(key, id) {
+  if (!key) return;
+  return req.get(key)
+      || req.get(`X-${key}`)
+      || req.query[key]
+      || req.query[key.toLowerCase()];
 }
 
 /*** ---CRUD Methods--- ***/
@@ -72,7 +84,3 @@ export function destroy(req, res, next) {
     .then(() => res.sendStatus(204))
     .catch(next);
 }
-
-
-
-
