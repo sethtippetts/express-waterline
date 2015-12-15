@@ -4,7 +4,7 @@ import { reduce } from 'async';
 import path from 'path';
 import Promise from 'bluebird';
 import { merge } from 'lodash';
-import { get, set } from 'object-path';
+import { get, set, coalesce } from 'object-path';
 import { pascalCase as pascal } from 'change-case';
 import debug from 'debug';
 import assert from 'assert';
@@ -45,7 +45,7 @@ export default function(config) {
       let tenants = connections[key];
       if (Array.isArray(tenants)) {
         multiTenant[key] = tenants.map(tenant => {
-          let id = tenant.tenantId;
+          let id = coalesce(tenant, ['tenantId', 'tenantid']);
           assert(!!id, 'Field "tenantId" required for multi-tenant connections');
           id = id.toLowerCase();
           log(`Creating tenant ${key} ${id}`);
