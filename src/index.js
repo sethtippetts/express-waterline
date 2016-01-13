@@ -2,7 +2,7 @@ import path from 'path';
 import assert from 'assert';
 import Promise from 'bluebird';
 import initModels from './models';
-import router from './resource-router';
+import router, { getTenantId } from './resource-router';
 import debug from 'debug';
 
 let log = debug('express:waterline');
@@ -15,12 +15,17 @@ export let getModels = (name, env) => initPromise
   .then((collections) => {
     log(`Getting models for key ${name} and environment ${env || 'default'}`);
     if (!name) return collections;
-    if (env) name += `-${env.toLowerCase()}`;
+    if (env && env !== 'default') name += `-${env.toLowerCase()}`;
     assert(collections[name], 'No collection with name "' + name + '" exists');
     return collections[name];
   });
 
-export default getModels;
+export default (name, env) => {
+  if (typeof env === 'object') {
+    env = getTenantId(env);
+  }
+  return getModels(name, env);
+};
 
 export function lifecycle(model, cycle) {
   log('Calling lifecycle method %s on %s', cycle, model.identity);
@@ -37,13 +42,18 @@ export function init(config) {
 
   configured = true;
 
+  let tenantKey = 'Env';
   // Defaults
   config = Object.assign({
     dir: path.join(process.cwd(), 'models'),
+    tenantKey,
+    getTenant: req => getTenantId(tenantKey, req),
     defaults: {},
     adapters: {},
     connections: {},
   }, config);
+
+  config.getTenant = Promise.method(config.getTenant);
 
   // Passing
   initModels(config).nodeify(initialized);

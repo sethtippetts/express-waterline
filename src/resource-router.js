@@ -1,5 +1,3 @@
-'use strict';
-
 import express from 'express';
 import Inflect from 'i';
 
@@ -14,6 +12,14 @@ export default function(config) {
   let router = express.Router();
   let { tenantKey } = config;
 
+  router.use((req, res, next) => {
+    config.getTenantId(req)
+      .then(id => {
+        req.tenant = id || 'default';
+        next();
+      })
+      .catch(next);
+  })
   router.use('/:resource', getResource);
 
   router.route('/:resource')
@@ -40,7 +46,7 @@ export default function(config) {
 
 }
 
-export function getTenantId(key, id) {
+export function getTenantId(key, req) {
   if (!key) return;
   return req.get(key)
       || req.get(`X-${key}`)
